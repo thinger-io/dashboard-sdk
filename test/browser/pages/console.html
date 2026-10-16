@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Minimal console</title></head>
+<body>
+<!-- The console's side of the contract, written against the exported protocol module. -->
+<script type="module">
+    import { IFRAME_SANDBOX, MESSAGE } from '/dist/protocol.js';
+
+    const params = new URLSearchParams(location.search);
+    const { T1, T2 } = await (await fetch('/test/tokens')).json();
+    const frame = document.createElement('iframe');
+    frame.setAttribute('sandbox', IFRAME_SANDBOX);
+    frame.src = params.get('app') || '/app-esm.html';
+    frame.style.width = '600px';
+    frame.style.height = '400px';
+    document.body.appendChild(frame);
+
+    window.received = [];
+    window.addEventListener('message', (ev) => {
+        if (ev.source !== frame.contentWindow) return;
+        const msg = ev.data;
+        window.received.push(msg);
+        if (msg.type === MESSAGE.READY) {
+            ev.source.postMessage({
+                type: MESSAGE.INIT,
+                apiBase: location.origin,
+                apiHost: location.origin,
+                token: T1,
+                user: { id: 'alice' },
+                project: { id: 'p1', name: 'Plant' },
+                context: { device: 'd1', project: 'p1' },
+                dashboard: { id: 'dash1', name: 'Test' },
+            }, '*');
+        } else if (msg.type === MESSAGE.REFRESH_TOKEN) {
+            ev.source.postMessage({ type: MESSAGE.TOKEN, token: T2 }, '*');
+        }
+    });
+    window.route = (path) => frame.contentWindow.postMessage({ type: MESSAGE.ROUTE, path }, '*');
+</script>
+</body>
+</html>
