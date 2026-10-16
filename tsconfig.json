@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "target": "ES2020",
+        "lib": ["ES2022", "DOM", "DOM.Iterable"],
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "strict": true,
+        "noUncheckedIndexedAccess": true,
+        "noImplicitOverride": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "exactOptionalPropertyTypes": false,
+        "isolatedModules": true,
+        "verbatimModuleSyntax": true,
+        "skipLibCheck": true,
+        "types": ["node"]
+    },
+    "include": ["src", "test", "scripts", "*.config.ts"]
+}

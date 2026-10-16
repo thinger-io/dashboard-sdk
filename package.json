@@ -1,0 +1,83 @@
+{
+    "name": "@thinger-io/dashboard-sdk",
+    "version": "0.2.0",
+    "description": "SDK for Thinger.io dashboard apps: pages and web apps (React, Angular, Vue…) that run inside the Thinger console or on their own",
+    "type": "module",
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "unpkg": "./dist/thinger-dashboard.min.js",
+    "jsdelivr": "./dist/thinger-dashboard.min.js",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        },
+        "./protocol": {
+            "types": "./dist/protocol.d.ts",
+            "import": "./dist/protocol.js"
+        },
+        "./global": {
+            "types": "./dist/global.d.ts"
+        },
+        "./compat.json": "./dist/compat.json",
+        "./iife": "./dist/thinger-dashboard.min.js",
+        "./package.json": "./package.json"
+    },
+    "files": [
+        "dist",
+        "CHANGELOG.md",
+        "PROTOCOL.md",
+        "LICENSE",
+        "README.md"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/thinger-io/dashboard-sdk.git"
+    },
+    "bugs": "https://github.com/thinger-io/dashboard-sdk/issues",
+    "homepage": "https://github.com/thinger-io/dashboard-sdk#readme",
+    "scripts": {
+        "build": "node scripts/build.mjs",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "typecheck": "node scripts/version.mjs && tsc --noEmit",
+        "test": "node scripts/version.mjs && vitest run",
+        "test:browser": "npm run build && playwright test",
+        "test:integration": "node scripts/version.mjs && vitest run --config vitest.integration.config.ts",
+        "prepublishOnly": "npm run build"
+    },
+    "keywords": [
+        "thinger",
+        "thinger.io",
+        "iot",
+        "dashboard",
+        "sdk"
+    ],
+    "author": "Thinger.io",
+    "license": "MIT",
+    "sideEffects": [
+        "./dist/index.js",
+        "./dist/thinger-dashboard.js",
+        "./dist/thinger-dashboard.min.js"
+    ],
+    "engines": {
+        "node": ">=20"
+    },
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "@playwright/test": "^1.64.1",
+        "@types/node": "^24.19.2",
+        "esbuild": "^0.28.2",
+        "eslint": "^10.13.0",
+        "eslint-config-prettier": "^10.1.8",
+        "globals": "^17.13.0",
+        "jsdom": "^30.1.3",
+        "prettier": "^3.9.10",
+        "typescript": "~6.0.3",
+        "typescript-eslint": "^8.71.2",
+        "vitest": "^4.1.12"
+    }
+}
