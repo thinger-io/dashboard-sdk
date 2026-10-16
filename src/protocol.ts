@@ -72,11 +72,21 @@ export interface ReadyMessage {
     type: 'thinger:ready';
     /** SDK version (semver, e.g. "0.2.0"). Since SDK 0.2; older SDKs send no fields. */
     sdk?: string;
+    /**
+     * The key of the frame load, from `thinger_frame` in the frame URL (since SDK 0.3). The
+     * console only answers messages that carry it with the token, file openings and navigation.
+     */
+    frame?: string;
 }
 
 /** A call got 401: the app asks for a new access token, answered by `thinger:token`. */
 export interface RefreshTokenMessage {
     type: 'thinger:refresh-token';
+    /**
+     * The key of the frame load, from `thinger_frame` in the frame URL (since SDK 0.3). The
+     * console only answers messages that carry it with the token, file openings and navigation.
+     */
+    frame?: string;
 }
 
 /** The app's hash route changed (the part after '#'), so the console can keep it in its URL. */
@@ -89,6 +99,11 @@ export interface LocationMessage {
 export interface NavigateMessage {
     type: 'thinger:navigate';
     target: NavigateTarget;
+    /**
+     * The key of the frame load, from `thinger_frame` in the frame URL (since SDK 0.3). The
+     * console only answers messages that carry it with the token, file openings and navigation.
+     */
+    frame?: string;
 }
 
 /** Open a storage file in a new tab through the console (PDF viewer, images). */
@@ -96,6 +111,11 @@ export interface OpenFileMessage {
     type: 'thinger:open-file';
     storage: string;
     path: string;
+    /**
+     * The key of the frame load, from `thinger_frame` in the frame URL (since SDK 0.3). The
+     * console only answers messages that carry it with the token, file openings and navigation.
+     */
+    frame?: string;
 }
 
 /** An error of the app page, copied to the console's browser console. */
@@ -190,6 +210,30 @@ export const TOKEN_REFRESH_TIMEOUT_MS = 8000;
 
 /** Prefix of the standalone parameters in the URL fragment. */
 export const STANDALONE_PREFIX = 'thinger_';
+
+/**
+ * Fragment parameter with the key of a frame load: the console adds `&thinger_frame=<key>` to the
+ * app URL each time it loads it (`#<route>&thinger_frame=<key>`, or `#&thinger_frame=<key>`). The
+ * SDK removes it before the app reads its route, keeps it in memory only, and sends it back as
+ * `frame` in the messages the console guards with it.
+ */
+export const FRAME_PARAM = 'thinger_frame';
+
+/** Messages that carry the frame key. */
+export const FRAME_KEYED_MESSAGES: readonly MessageType[] = [
+    'thinger:ready',
+    'thinger:refresh-token',
+    'thinger:open-file',
+    'thinger:navigate',
+];
+
+/** `url` with the frame key added to its fragment, after the route (for the console). */
+export function withFrameKey(url: string, key: string): string {
+    const hash = url.indexOf('#');
+    const base = hash >= 0 ? url.slice(0, hash) : url;
+    const fragment = hash >= 0 ? url.slice(hash + 1) : '';
+    return base + '#' + fragment + '&' + FRAME_PARAM + '=' + encodeURIComponent(key);
+}
 
 /**
  * Standalone parameters, without the prefix: `#<route>&thinger_token=…&thinger_api=…`.

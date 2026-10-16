@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Another page in the frame</title>
+    </head>
+    <body>
+        <!-- A page the app's frame navigated to: it asks the console for a token without the key. -->
+        <script>
+            const got = [];
+            addEventListener('message', (ev) => {
+                if (ev.source !== parent) return;
+                got.push(ev.data);
+                document.body.dataset.result = JSON.stringify(got);
+            });
+            parent.postMessage({ type: 'thinger:ready' }, '*');
+            parent.postMessage({ type: 'thinger:refresh-token' }, '*');
+            parent.postMessage({ type: 'thinger:ready', frame: 'guessed' }, '*');
+        </script>
+    </body>
+</html>

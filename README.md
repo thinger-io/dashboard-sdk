@@ -62,7 +62,11 @@ documentation for agents (`doc_read` with id `concepts`, from `@thinger-io/cli`)
 4. Build with **relative asset URLs** and **no `<base>` tag** (Vite: `base: './'`). Assets then
    resolve next to the entry file, and hash navigation keeps a named entry file in the URL. No
    hashed file names or `?v=` on assets are needed either.
-5. No `localStorage`, `sessionStorage` or cookies: the iframe has an opaque origin. Keep settings
+5. Reload with `Thinger.reload()`, not `location.reload()`: inside the console the frame URL
+   carries a per-load key the SDK removes on start, and a page reloaded without it gets no token.
+   For the same reason, keep the app in one page (hash routing) rather than linking from one
+   entry file to another inside the frame; open other dashboards with `Thinger.navigate()`.
+6. No `localStorage`, `sessionStorage` or cookies: the iframe has an opaque origin. Keep settings
    in properties (`Thinger.properties`).
 
 The SDK reports the hash route to the console, which keeps it in its own URL
@@ -224,6 +228,7 @@ browser automation can read the DOM, run scripts, take screenshots and read the 
 | `onInit(fn)`          | Call `fn(Thinger)` on every init (and at once when already initialized).                                                                                                                                                                                                                                                              |
 | `request(path, opts)` | API call. `opts.body`: any JSON value, or a string / Blob / FormData / ArrayBuffer sent as is. `opts.as` forces the response type (`json`, `text`, `blob`, `arrayBuffer`); by default JSON for JSON responses, text otherwise, null when empty. `opts.project: false` skips the project scoping. Use it for any API not wrapped here. |
 | `fetch(path, opts)`   | Raw `fetch()` with the Bearer token and `?project=`; inside the console, retries once after a transparent token refresh on 401. Absolute URLs of other servers get neither: the token only goes to the Thinger server.                                                                                                                |
+| `reload()`            | Reload the app. Use it instead of `location.reload()`: inside the console it keeps the key of the frame load, without which the reloaded page gets no token.                                                                                                                                                                          |
 | `navigate(target)`    | Navigate the console: a path, or one of `{ device }`, `{ product }`, `{ project }`, `{ dashboard }`, `{ url }`. Standalone pages go to the URL themselves.                                                                                                                                                                            |
 | `supports(name)`      | Whether a function is available on this server: `Thinger.supports('devices.list')`. See below.                                                                                                                                                                                                                                        |
 

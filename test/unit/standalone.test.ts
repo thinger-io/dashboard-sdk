@@ -152,3 +152,15 @@ describe('protocol helpers', () => {
         await flush();
     });
 });
+
+describe('withFrameKey', () => {
+    it('adds the key after the route', async () => {
+        const { withFrameKey } = await import('../../src/protocol.js');
+        expect(withFrameKey('/v1/users/u/storages/s/files/', 'k')).toBe(
+            '/v1/users/u/storages/s/files/#&thinger_frame=k',
+        );
+        expect(withFrameKey('/f/index.html?v=2#/devices', 'k')).toBe(
+            '/f/index.html?v=2#/devices&thinger_frame=k',
+        );
+    });
+});

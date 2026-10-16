@@ -7,13 +7,18 @@
     <body>
         <!-- The console's side of the contract, written against the exported protocol module. -->
         <script type="module">
-            import { IFRAME_SANDBOX, MESSAGE } from '/dist/protocol.js';
+            import { IFRAME_SANDBOX, MESSAGE, withFrameKey } from '/dist/protocol.js';
 
             const params = new URLSearchParams(location.search);
             const { T1, T2 } = await (await fetch('/test/tokens')).json();
             const frame = document.createElement('iframe');
             frame.setAttribute('sandbox', IFRAME_SANDBOX);
-            frame.src = params.get('app') || '/app-esm.html';
+            // a new key for each load of the frame: only the document loaded with it gets the token
+            const key = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) =>
+                b.toString(16).padStart(2, '0'),
+            ).join('');
+            frame.src = withFrameKey(params.get('app') || '/app-esm.html', key);
+            window.frameKey = key;
             frame.style.width = '600px';
             frame.style.height = '400px';
             document.body.appendChild(frame);
@@ -23,13 +28,14 @@
                 if (ev.source !== frame.contentWindow) return;
                 const msg = ev.data;
                 window.received.push(msg);
+                const keyed = msg.frame === key;
                 if (msg.type === MESSAGE.READY) {
                     ev.source.postMessage(
                         {
                             type: MESSAGE.INIT,
                             apiBase: location.origin,
                             apiHost: location.origin,
-                            token: T1,
+                            token: keyed ? T1 : null,
                             user: { id: 'alice' },
                             project: { id: 'p1', name: 'Plant' },
                             context: { device: 'd1', project: 'p1' },
@@ -37,7 +43,7 @@
                         },
                         '*',
                     );
-                } else if (msg.type === MESSAGE.REFRESH_TOKEN) {
+                } else if (msg.type === MESSAGE.REFRESH_TOKEN && keyed) {
                     ev.source.postMessage({ type: MESSAGE.TOKEN, token: T2 }, '*');
                 }
             });

@@ -7,6 +7,8 @@ import { Events } from './events.js';
 import { bodyOf, enc, jwtPayload, responseError, safeJson } from './http.js';
 import { Endpoints, Products, Projects, Stats } from './misc.js';
 import {
+    FRAME_KEYED_MESSAGES,
+    FRAME_PARAM,
     HANDSHAKE_TIMEOUT_MS,
     MAX_ERROR_LENGTH,
     MAX_ERROR_MESSAGES,
@@ -21,6 +23,7 @@ import {
     type Project,
     type StandaloneParams,
     type User,
+    withFrameKey,
 } from './protocol.js';
 import { Properties, Resources } from './resources.js';
 import { Storages } from './storages.js';
@@ -98,6 +101,9 @@ export class ThingerClient {
     private refresh: { promise: Promise<boolean>; resolve: (ok: boolean) => void } | null = null;
     private embedReadySent = false;
     private readonly warned = new Set<string>();
+    // key of this frame load, given by the console (memory only: a page the frame navigates to
+    // must not find it)
+    private frameKey: string | null = null;
 
     constructor(options: ClientOptions = {}) {
         const win = options.window !== undefined ? options.window : defaultWindow();
@@ -145,6 +151,7 @@ export class ThingerClient {
 
         win.addEventListener('message', (ev) => this.onMessage(ev));
         if (win.parent !== win) {
+            this.frameKey = takeFrameKey(win);
             this.post({ type: MESSAGE.READY, sdk: SDK_VERSION });
             this.reportLocation(win);
             this.forwardErrors(win);
@@ -345,6 +352,30 @@ export class ThingerClient {
         this.post({ type: MESSAGE.NAVIGATE, target });
     }
 
+    /**
+     * Reload the app. Use it instead of `location.reload()`: inside the console it keeps the key
+     * of the frame load, without which the reloaded page gets no token.
+     */
+    reload(): void {
+        const win = this.env.window;
+        if (!win) return;
+        if (this.frameKey) {
+            try {
+                win.history.replaceState(
+                    win.history.state,
+                    '',
+                    withFrameKey(
+                        win.location.pathname + win.location.search + win.location.hash,
+                        this.frameKey,
+                    ),
+                );
+            } catch {
+                // reload anyway
+            }
+        }
+        win.location.reload();
+    }
+
     // ----- Internals shared with the API classes ---------------------------------------------
 
     /** @internal The viewer's id, or a `no-session` error. */
@@ -364,6 +395,9 @@ export class ThingerClient {
     post(message: AppMessage): boolean {
         const win = this.env.window;
         if (!win || win.parent === win) return false;
+        if (this.frameKey && FRAME_KEYED_MESSAGES.includes(message.type)) {
+            message = { ...message, frame: this.frameKey } as AppMessage;
+        }
         try {
             win.parent.postMessage(message, '*');
             return true;
@@ -681,6 +715,39 @@ export class ThingerClient {
         this.warned.add(key);
         console.warn(message);
     }
+}
+
+/**
+ * Take the console's frame key out of the URL fragment (`…&thinger_frame=<key>`) before the app
+ * reads its route, leaving the rest as it was. Null when there is none.
+ */
+function takeFrameKey(win: Window): string | null {
+    const hash = win.location.hash.replace(/^#/, '');
+    if (hash.indexOf(FRAME_PARAM + '=') < 0) return null;
+    let key: string | null = null;
+    const rest = hash
+        .split('&')
+        .filter((part) => {
+            if (!part.startsWith(FRAME_PARAM + '=')) return true;
+            const value = part.slice(FRAME_PARAM.length + 1);
+            try {
+                key = decodeURIComponent(value);
+            } catch {
+                key = value;
+            }
+            return false;
+        })
+        .join('&');
+    try {
+        win.history.replaceState(
+            win.history.state,
+            '',
+            win.location.pathname + win.location.search + (rest ? '#' + rest : ''),
+        );
+    } catch {
+        // the key still works; the route keeps the parameter
+    }
+    return key || null;
 }
 
 /** A server address for `apiBase` (`http(s)://host[:port][/path]`, no trailing slash), or null. */

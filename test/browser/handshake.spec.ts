@@ -27,7 +27,8 @@ for (const app of ['app-esm.html', 'app-iife.html']) {
         expect(result.devices).toEqual([{ device: 'd1' }, { device: 'd2' }]);
 
         const received = await page.evaluate(() => (window as any).received);
-        expect(received[0]).toEqual({ type: 'thinger:ready', sdk: pkg.version });
+        const key = await page.evaluate(() => (window as any).frameKey);
+        expect(received[0]).toEqual({ type: 'thinger:ready', sdk: pkg.version, frame: key });
         expect(received.filter((m: any) => m.type === 'thinger:refresh-token')).toHaveLength(1);
 
         // the first device list got 401 with T1, then the retry carried T2; both scoped to p1
@@ -148,4 +149,32 @@ test('README layout check: the app inside its own page at phone size', async ({
         link,
     );
     expect(ready).toEqual({ width: 380, scrolls: false, devices: 2 });
+});
+
+test('frame key: the app gets the token, a page the frame navigates to does not', async ({
+    page,
+}) => {
+    await page.goto('/console.html?app=' + encodeURIComponent('/app-esm.html#/devices'));
+    const frame = await appFrame(page);
+    const result = await appResult(frame);
+    expect(result.error).toBeUndefined();
+    // the key left the app's route before it started, and never reached the location reports
+    expect(result.hash).toBe('#/devices');
+    const key = await page.evaluate(() => (window as any).frameKey);
+    const received = await page.evaluate(() => (window as any).received);
+    expect(received[0]).toMatchObject({ type: 'thinger:ready', frame: key });
+    expect(
+        JSON.stringify(received.filter((m: any) => m.type === 'thinger:location')),
+    ).not.toContain(key);
+
+    // a link in the app takes the frame elsewhere
+    await frame.evaluate(() => {
+        location.href = '/intruder.html';
+    });
+    await expect.poll(() => frame.url()).toContain('/intruder.html');
+    await expect(frame.locator('body[data-result]')).toHaveCount(1);
+    await page.waitForTimeout(300);
+    const got = JSON.parse((await frame.locator('body').getAttribute('data-result'))!);
+    expect(got.map((m: any) => m.type)).toEqual(['thinger:init', 'thinger:init']);
+    expect(got.every((m: any) => m.token === null)).toBe(true);
 });

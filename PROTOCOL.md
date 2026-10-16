@@ -43,12 +43,20 @@ import {
 - **Who gets the token:** the console sends the access token (and answers token refreshes and
   file openings) only when the app's URL has the console's own origin, such as a file storage of
   the same server. An app on another origin gets `token: null` and the rest of the context.
-- **One token per frame document.** The sandbox does not stop a link in the app from navigating
-  the frame itself to another site, and that page would pass the `event.source` check (both have
-  an opaque origin). So the console answers with a token (in `thinger:init`, `thinger:token`) only
-  to the document it loaded: once the frame fires a second `load` (another document, not a hash
-  change), it sends no token until it loads the dashboard URL again. _Console 7.5 does not do
-  this yet: required from the next console release._
+- **Frame key.** The sandbox does not stop a link in the app from navigating the frame itself to
+  another page, and that page passes the `event.source` check (both have an opaque origin). So
+  each time the console sets the frame's URL it adds a fresh random key to its fragment, as one
+  more parameter after the route: `#<route>&thinger_frame=<key>`, or `#&thinger_frame=<key>`
+  without a route (`withFrameKey()`; 128 bits, hex). The app's SDK takes it out of the fragment
+  before the app reads its route, keeps it in memory only (never in storage, never in
+  `thinger:location`), and sends it back as `frame` in `thinger:ready`, `thinger:refresh-token`,
+  `thinger:open-file` and `thinger:navigate` (`FRAME_KEYED_MESSAGES`). The console answers those
+  only when `frame` is that key: a `thinger:ready` without it gets `thinger:init` with
+  `token: null`, and the other three are ignored. `thinger:location` and `thinger:error` need no
+  key. A page the frame navigates to, another page of the same app linked without the key
+  included, gets no token; single-page apps with hash routing are not affected. To reload, apps
+  use `Thinger.reload()`, which puts the key back first. Since SDK 0.3; a console that sends no
+  key leaves the SDK without one, and an SDK before 0.3 inside a console with keys gets no token.
 - **Handshake timeout.** A framed app that gets no `thinger:init` within 10 s
   (`HANDSHAKE_TIMEOUT_MS`) rejects `ready()` with `code: 'no-session'`, so a page framed by a site
   that is not the console fails visibly. A later `thinger:init` still starts the session.
@@ -73,14 +81,14 @@ app (iframe)                                   console
 
 ## App → console
 
-| Message                 | Fields                            | Meaning                                                                                                                                                                                                                      |
-| ----------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `thinger:ready`         | `sdk?: string`                    | The app is loaded and asks for `thinger:init`. Sent once, when the SDK starts. `sdk` is the SDK version (semver, e.g. `"0.2.0"`), sent since SDK 0.2.                                                                        |
-| `thinger:refresh-token` | —                                 | A call got 401: send a new access token.                                                                                                                                                                                     |
-| `thinger:location`      | `path: string`                    | The app's hash route (the part after `#`) changed, so the console can keep it in its own URL. Sent once at start and on every change. The console ignores paths longer than 1024 characters (`MAX_LOCATION_LENGTH`).         |
-| `thinger:navigate`      | `target`                          | Navigate the console. `target` is a path or URL (string), or one of `{ device }`, `{ product }`, `{ project }`, `{ dashboard }`, `{ url }`. The console maps it to its routes and only follows `http(s)` URLs.               |
-| `thinger:open-file`     | `storage: string`, `path: string` | Open a file of one of the viewer's storages in a new tab. The console builds the URL, fetches the file with its own token and opens it. It refuses storage ids outside `[a-zA-Z0-9_-]{1,32}` and paths with `..`.            |
-| `thinger:error`         | `message: string`                 | An error of the app page (uncaught error, unhandled rejection, `console.error`), for the console's own browser console. At most 100 per page load (`MAX_ERROR_MESSAGES`), each at most 2000 characters (`MAX_ERROR_LENGTH`). |
+| Message                 | Fields                           | Meaning                                                                                                                                                                                                                      |
+| ----------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `thinger:ready`         | `sdk?: string`, `frame?: string` | The app is loaded and asks for `thinger:init`. Sent once, when the SDK starts. `sdk` is the SDK version (semver, e.g. `"0.2.0"`), sent since SDK 0.2.                                                                        |
+| `thinger:refresh-token` | `frame?: string`                 | A call got 401: send a new access token.                                                                                                                                                                                     |
+| `thinger:location`      | `path: string`                   | The app's hash route (the part after `#`) changed, so the console can keep it in its own URL. Sent once at start and on every change. The console ignores paths longer than 1024 characters (`MAX_LOCATION_LENGTH`).         |
+| `thinger:navigate`      | `target`, `frame?: string`       | Navigate the console. `target` is a path or URL (string), or one of `{ device }`, `{ product }`, `{ project }`, `{ dashboard }`, `{ url }`. The console maps it to its routes and only follows `http(s)` URLs.               |
+| `thinger:open-file`     | `storage`, `path`, `frame?`      | Open a file of one of the viewer's storages in a new tab. The console builds the URL, fetches the file with its own token and opens it. It refuses storage ids outside `[a-zA-Z0-9_-]{1,32}` and paths with `..`.            |
+| `thinger:error`         | `message: string`                | An error of the app page (uncaught error, unhandled rejection, `console.error`), for the console's own browser console. At most 100 per page load (`MAX_ERROR_MESSAGES`), each at most 2000 characters (`MAX_ERROR_LENGTH`). |
 
 ## Console → app
 
@@ -137,6 +145,12 @@ https://<host>/<app>/#<route>&thinger_token=<access token>&thinger_api=<server>&
   for a token refresh: when the token expires, calls fail with 401.
 - A token is only read from the fragment present when the page loads. A later hash change does not
   switch a loaded page to standalone mode.
+
+## Frame URL parameters
+
+| Parameter       | Meaning                                                                                                                     |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `thinger_frame` | Key of this load of the frame, added by the console (see **Frame key**). The SDK removes it before the app reads its route. |
 
 ## What is not in the protocol
 

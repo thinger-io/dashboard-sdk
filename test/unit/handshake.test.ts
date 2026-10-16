@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ThingerClient } from '../../src/client.js';
 import { MAX_ERROR_LENGTH, MAX_ERROR_MESSAGES } from '../../src/protocol.js';
 import { SDK_VERSION } from '../../src/version.js';
-import { FakeParent, FakeWindow, flush, framed, json, token } from './harness.js';
+import { FakeParent, FakeWindow, flush, framed, json, standalone, token } from './harness.js';
 
 afterEach(() => {
     vi.restoreAllMocks();
@@ -200,5 +200,77 @@ describe('ready() and the server version', () => {
         server.on('GET', '/v1/users/alice/devices/d1', json({ device: 'd1' }));
         await init();
         await expect(sdk.devices.get('d1')).resolves.toEqual({ device: 'd1' });
+    });
+});
+
+describe('frame key', () => {
+    const KEY = '0123456789abcdef0123456789abcdef';
+
+    it('takes thinger_frame out of the route before the app starts, and keeps it out of storage', () => {
+        const storage = new Map<string, string>();
+        const parent = new FakeParent();
+        const win = new FakeWindow(
+            'https://console.example/app/#/devices/d1&thinger_frame=' + KEY,
+            {
+                parent,
+                storage,
+            },
+        );
+        new ThingerClient({ window: win as unknown as Window, fetch: vi.fn() });
+        expect(win.location.hash).toBe('#/devices/d1');
+        expect(storage.size).toBe(0);
+        expect(parent.messages[0]).toEqual({ type: 'thinger:ready', sdk: SDK_VERSION, frame: KEY });
+    });
+
+    it('leaves no fragment when there was no route', () => {
+        const { win } = framed('https://console.example/app/#&thinger_frame=' + KEY);
+        expect(win.location.hash).toBe('');
+    });
+
+    it('sends the key with refresh-token, open-file and navigate, never with location or error', async () => {
+        const { sdk, server, parent, win, init } = framed(
+            'https://console.example/app/#/x&thinger_frame=' + KEY,
+        );
+        server.on('GET', '/v1/users/alice/devices/d1', { status: 401 });
+        await init();
+        await flush();
+        void sdk.devices.get('d1').catch(() => {});
+        await flush();
+        await sdk.storages.open('docs', 'a.pdf');
+        sdk.navigate({ device: 'd1' });
+        win.console.error('boom');
+        win.receive({ type: 'thinger:token', token: null });
+        const byType = (type: string) => parent.of(type).map((m) => m.frame);
+        expect(byType('thinger:refresh-token')).toEqual([KEY]);
+        expect(byType('thinger:open-file')).toEqual([KEY]);
+        expect(byType('thinger:navigate')).toEqual([KEY]);
+        expect(parent.of('thinger:location')).toEqual([{ type: 'thinger:location', path: '/x' }]);
+        expect(byType('thinger:error')).toEqual([undefined]);
+    });
+
+    it('sends no key when the console gave none (consoles before the key)', () => {
+        const { parent } = framed('https://console.example/app/#/x');
+        expect(parent.messages[0]).toEqual({ type: 'thinger:ready', sdk: SDK_VERSION });
+    });
+
+    it('puts the key back before reloading', () => {
+        const { sdk, win } = framed('https://console.example/app/#/x&thinger_frame=' + KEY);
+        const reload = vi.fn();
+        (win.location as any).reload = reload;
+        win.history.pushState(null, '', '#/y');
+        sdk.reload();
+        expect(win.location.hash).toBe('#/y&thinger_frame=' + KEY);
+        expect(reload).toHaveBeenCalled();
+    });
+
+    it('is not taken in standalone mode', async () => {
+        const { sdk } = standalone(
+            'https://server.example/app/#/a&thinger_token=' +
+                token('alice') +
+                '&thinger_frame=' +
+                KEY,
+        );
+        await sdk.ready();
+        expect(sdk.token).toBe(token('alice'));
     });
 });

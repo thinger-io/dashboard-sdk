@@ -3,6 +3,21 @@
 Versions follow semver. While they are 0.x the contract with the console is still being fixed;
 1.0.0 freezes it. Each major version gets a migration section.
 
+## [0.3.0] - 2026-10-16
+
+The console only hands the token to the page it loaded: a page the app's frame navigates to (a
+link in the app) no longer gets it. This needs this SDK version inside consoles that send a frame
+key; older SDKs get no token there.
+
+### Added
+
+- Frame key (`PROTOCOL.md`, "Frame key"): the SDK takes `thinger_frame` out of the frame URL
+  before the app reads its route and sends it back as `frame` in `thinger:ready`,
+  `thinger:refresh-token`, `thinger:open-file` and `thinger:navigate`. `FRAME_PARAM`,
+  `FRAME_KEYED_MESSAGES` and `withFrameKey()` in `@thinger-io/dashboard-sdk/protocol`.
+- `Thinger.reload()`: reload the app keeping the frame key. Apps use it instead of
+  `location.reload()`.
+
 ## [0.2.1] - 2026-10-16
 
 ### Changed
