@@ -334,7 +334,9 @@ export class ThingerClient {
             const url =
                 typeof target === 'string'
                     ? target
-                    : typeof target === 'object' && 'url' in target && typeof target.url === 'string'
+                    : typeof target === 'object' &&
+                        'url' in target &&
+                        typeof target.url === 'string'
                       ? target.url
                       : null;
             if (url) this.env.window?.location.assign(url);

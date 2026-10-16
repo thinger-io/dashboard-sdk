@@ -267,7 +267,9 @@ describe('review fixes', () => {
         await sdk.devices.callResource('d1', 'mode');
         await sdk.buckets.write('b', 'text');
         expect(server.apiCalls.map((c) => c.body)).toEqual(['auto', null, 'text']);
-        expect(server.apiCalls.every((c) => c.headers['Content-Type'] === 'application/json')).toBe(true);
+        expect(server.apiCalls.every((c) => c.headers['Content-Type'] === 'application/json')).toBe(
+            true,
+        );
     });
 
     it('sends the token only to the Thinger server', async () => {
@@ -306,4 +308,3 @@ describe('review fixes', () => {
         expect(parent.of('thinger:navigate')).toEqual([]);
     });
 });
-

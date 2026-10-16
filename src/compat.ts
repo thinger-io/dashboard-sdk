@@ -63,7 +63,11 @@ function compatOf(host: CompatHost): Compat | undefined {
  * declared, not detected, because bundlers that compile `async` away (Angular with zone.js) would
  * hide it.
  */
-export function requiresServer(name: string, version: string, returns: 'promise' | 'value' = 'promise') {
+export function requiresServer(
+    name: string,
+    version: string,
+    returns: 'promise' | 'value' = 'promise',
+) {
     if (!parseServerVersion(version)) throw new Error('requiresServer: invalid version ' + version);
     if (requirements.has(name)) throw new Error('requiresServer: ' + name + ' declared twice');
     requirements.set(name, version);
