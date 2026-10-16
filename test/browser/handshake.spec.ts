@@ -32,7 +32,10 @@ for (const app of ['app-esm.html', 'app-iife.html']) {
 
         // the first device list got 401 with T1, then the retry carried T2; both scoped to p1
         const { T1, T2 } = await (await request.get('/test/tokens')).json();
-        const calls = (await (await request.get('/test/calls')).json()) as Array<{ path: string; auth: string }>;
+        const calls = (await (await request.get('/test/calls')).json()) as Array<{
+            path: string;
+            auth: string;
+        }>;
         const lists = calls.filter((c) => c.path.startsWith('/v1/users/alice/devices?')).slice(-3);
         expect(lists.map((c) => c.auth)).toEqual(['Bearer ' + T1, 'Bearer ' + T2, 'Bearer ' + T2]);
         expect(lists.every((c) => c.path.includes('project=p1'))).toBe(true);
@@ -47,7 +50,11 @@ test('route both ways between the app and the console', async ({ page }) => {
 
     await frame.evaluate(() => history.pushState(null, '', '#/devices/d1'));
     await expect
-        .poll(() => page.evaluate(() => (window as any).received.filter((m: any) => m.type === 'thinger:location').at(-1)))
+        .poll(() =>
+            page.evaluate(() =>
+                (window as any).received.filter((m: any) => m.type === 'thinger:location').at(-1),
+            ),
+        )
         .toEqual({ type: 'thinger:location', path: '/devices/d1' });
 
     await page.evaluate(() => (window as any).route('/alarms'));
@@ -60,14 +67,23 @@ test('forwards the app errors to the console', async ({ page }) => {
     await appResult(frame);
     await frame.evaluate(() => console.error('broken widget'));
     await expect
-        .poll(() => page.evaluate(() => (window as any).received.filter((m: any) => m.type === 'thinger:error').map((m: any) => m.message)))
+        .poll(() =>
+            page.evaluate(() =>
+                (window as any).received
+                    .filter((m: any) => m.type === 'thinger:error')
+                    .map((m: any) => m.message),
+            ),
+        )
         .toContain('broken widget');
 });
 
 test('standalone link with thinger_api, top level', async ({ page, baseURL, request }) => {
     const { T2 } = await (await request.get('/test/tokens')).json();
     await page.goto(
-        '/app-esm.html#/start&thinger_token=' + T2 + '&thinger_project=p1&thinger_api=' + encodeURIComponent(baseURL!),
+        '/app-esm.html#/start&thinger_token=' +
+            T2 +
+            '&thinger_project=p1&thinger_api=' +
+            encodeURIComponent(baseURL!),
     );
     const result = await appResult(page.mainFrame());
     expect(result.error).toBeUndefined();

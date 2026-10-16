@@ -42,12 +42,19 @@ createServer(async (req, res) => {
         calls.push({ path: path + url.search, auth: req.headers.authorization || null });
         if (path === '/v1/server/version') return send(res, 200, { version: '7.5.0' });
         if (path === '/v1/users/alice/devices') {
-            if (req.headers.authorization !== 'Bearer ' + T2) return send(res, 401, { error: { message: 'expired' } });
-            return send(res, 200, url.searchParams.get('index') === '0' ? [{ device: 'd1' }, { device: 'd2' }] : []);
+            if (req.headers.authorization !== 'Bearer ' + T2)
+                return send(res, 401, { error: { message: 'expired' } });
+            return send(
+                res,
+                200,
+                url.searchParams.get('index') === '0' ? [{ device: 'd1' }, { device: 'd2' }] : [],
+            );
         }
         return send(res, 404, { error: { message: 'not found' } });
     }
-    const file = normalize(join(root, path.startsWith('/dist/') ? path : join('test/browser/pages', path)));
+    const file = normalize(
+        join(root, path.startsWith('/dist/') ? path : join('test/browser/pages', path)),
+    );
     if (!file.startsWith(root)) return send(res, 403, {});
     try {
         const body = await readFile(file);
