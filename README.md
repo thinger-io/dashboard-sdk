@@ -26,14 +26,15 @@ Thinger.buckets.subscribe('my_bucket', { device: true, from: '6h', items: 500 },
   [CHANGELOG.md](CHANGELOG.md).
 - Versions are 0.x until the contract is frozen at 1.0.
 
-Platform concepts (projects, products, buckets, properties…) are in the server's
-`/sdk/thinger-concepts.md`.
+Platform concepts (projects, products, buckets, properties…) are in the Thinger CLI's
+documentation for agents (`doc_read` with id `concepts`, from `@thinger-io/cli`).
 
 ## Contents
 
 - [Getting started](#getting-started)
 - [Publishing](#publishing)
 - [Standalone: dev servers, preview links and embedding](#standalone-dev-servers-preview-links-and-embedding)
+- [Reviewing the layout](#reviewing-the-layout)
 - [Context](#context-after-ready)
 - [Core](#core)
 - [Server versions](#server-versions)
@@ -121,14 +122,10 @@ Uses:
   `http://localhost:5173/#/&thinger_api=https%3A%2F%2F<server>&thinger_token=<token>`. The server
   answers CORS for any origin, and the SDK is part of the app's own build, so nothing else is
   needed: no proxy.
-- **Reviewing the app as a normal page** (DOM, styles, scrolling, console): inside the console's
-  sandboxed iframe, browser automation can neither read nor scroll the app. Use a token that
-  expires soon, created for the purpose.
-- **Testing at exact sizes** (a website frame, a phone): open the app inside the server's
-  `/sdk/preview.html`, which shows it at several sizes at once and checks the layout of each
-  (horizontal scroll, content past the right edge, clipped text, failed requests…):
-  `/sdk/preview.html#src=<standalone link, URL-encoded>&sizes=1150x758,950x678,380x598`. Each
-  frame waits for the app's first successful API call (`thinger:dashboard-ready`).
+- **Reviewing the app as a normal page** (DOM, styles, scrolling, console, sizes): inside the
+  console's sandboxed iframe, browser automation can neither read nor scroll the app. See
+  [Reviewing the layout](#reviewing-the-layout). Use a token that expires soon, created for the
+  purpose.
 - **Permanent links**: a wall screen in a control room, or a customer without an account. One
   token per link, named after its use, without `expire`; deleting the token revokes that link.
 - **Embedding a live app in a website** (`<iframe src="…#thinger_token=…">`). Once its first API
@@ -157,6 +154,54 @@ Tokens:
   (`err.status === 403`) by telling the viewer that this link has no permission for it, instead
   of failing silently. The same applies inside the console, where project members may lack
   permissions too.
+
+## Reviewing the layout
+
+Check the app as it will be seen: at the sizes of the places it is shown (the console's content
+area, a website frame, a phone), with real data. Open its standalone link at top level, where
+browser automation can read the DOM, run scripts, take screenshots and read the console.
+
+- **Sizes.** Typical ones: 1150×758 and 950×678 (console on a laptop, with and without its side
+  menu) and 380×598 (phone). Browsers do not shrink a window below ~500 px, so for narrower sizes
+  either set the viewport (Playwright `page.setViewportSize()`, DevTools device emulation) or load
+  the app inside its own page in an iframe of that size, loaded with the **standalone link** (the
+  SDK removes the token from the page's address, and a frame does not read the tab's stored
+  session). Same origin, so the frame's document can be inspected like the page, and the frame
+  tells the page when its data is in (`thinger:dashboard-ready`).
+
+    ```js
+    // run in the app's page; STANDALONE_LINK is the full link, with #…&thinger_token=…
+    const frame = Object.assign(document.createElement('iframe'), { src: STANDALONE_LINK });
+    Object.assign(frame.style, {
+        width: '380px',
+        height: '598px',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        zIndex: 99999,
+        background: '#fff',
+    });
+    addEventListener('message', (ev) => {
+        if (ev.source === frame.contentWindow && ev.data?.type === 'thinger:dashboard-ready') {
+            // data loaded: frame.contentDocument is the app at 380 px
+        }
+    });
+    document.body.append(frame);
+    ```
+
+- **Wait for data**, not just for `load`: the first successful API call (in a website frame, the
+  `thinger:dashboard-ready` message), then a second or two for charts and late renders.
+- **What to check at each size:**
+    - horizontal scroll: `document.documentElement.scrollWidth > innerWidth`;
+    - elements past the right edge: `getBoundingClientRect().right > innerWidth` for visible
+      elements;
+    - clipped text: `scrollWidth > clientWidth` on elements with `overflow: hidden` (an ellipsis
+      on purpose is fine);
+    - rows of cards with room for one more, or a lone card on the last row;
+    - failed requests and console errors;
+    - what the first screen shows without scrolling.
+- Inside the console the app scrolls within its frame, which fills the content area: design for
+  that height instead of a fixed one.
 
 ## Context (after `ready()`)
 

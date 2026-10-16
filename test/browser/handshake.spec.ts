@@ -93,3 +93,59 @@ test('standalone link with thinger_api, top level', async ({ page, baseURL, requ
     expect(result.hash).toBe('#/start');
     expect(page.url()).not.toContain('thinger_token');
 });
+
+test('README layout check: the app inside its own page at phone size', async ({
+    page,
+    baseURL,
+    request,
+}) => {
+    const { T2 } = await (await request.get('/test/tokens')).json();
+    const link =
+        baseURL +
+        '/app-esm.html#/start&thinger_token=' +
+        T2 +
+        '&thinger_api=' +
+        encodeURIComponent(baseURL!);
+    await page.goto(link);
+    await appResult(page.mainFrame());
+    // the snippet of README "Reviewing the layout"
+    const ready = await page.evaluate(
+        (src) =>
+            new Promise<{ width: number; scrolls: boolean; devices: number }>((resolve) => {
+                const frame = Object.assign(document.createElement('iframe'), { src });
+                Object.assign(frame.style, {
+                    width: '380px',
+                    height: '598px',
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                });
+                addEventListener('message', (ev) => {
+                    if (
+                        ev.source === frame.contentWindow &&
+                        ev.data?.type === 'thinger:dashboard-ready'
+                    ) {
+                        const doc = frame.contentDocument!;
+                        const poll = (): void => {
+                            const result = doc.body.dataset['result'];
+                            if (!result) {
+                                setTimeout(poll, 50);
+                                return;
+                            }
+                            resolve({
+                                width: frame.contentWindow!.innerWidth,
+                                scrolls:
+                                    doc.documentElement.scrollWidth >
+                                    frame.contentWindow!.innerWidth,
+                                devices: JSON.parse(result).devices.length,
+                            });
+                        };
+                        poll();
+                    }
+                });
+                document.body.append(frame);
+            }),
+        link,
+    );
+    expect(ready).toEqual({ width: 380, scrolls: false, devices: 2 });
+});

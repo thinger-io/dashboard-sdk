@@ -3,6 +3,14 @@
 Versions follow semver. While they are 0.x the contract with the console is still being fixed;
 1.0.0 freezes it. Each major version gets a migration section.
 
+## [Unreleased]
+
+### Changed
+
+- README: "Reviewing the layout" explains how to check an app at several sizes with the
+  browser's own tools; the server's `/sdk/preview.html` is retired, with the rest of `/sdk/`.
+  Platform concepts are read from the Thinger CLI's documentation.
+
 ## [0.2.0] - 2026-10-16
 
 The dashboard SDK becomes an npm package, rewritten in TypeScript. SDK 0.1, the script the server
