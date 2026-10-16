@@ -44,13 +44,13 @@ export class AlarmRules {
     /** @internal */
     constructor(private readonly sdk: ThingerClient) {}
 
-    list(query?: Record<string, unknown>): Promise<any[]> {
+    async list(query?: Record<string, unknown>): Promise<any[]> {
         return this.sdk.request<any[]>(
             '/v1/users/' + enc(this.sdk.userId()) + '/alarms/rules' + buildQuery(query),
         );
     }
 
-    get(ruleId: string): Promise<any> {
+    async get(ruleId: string): Promise<any> {
         return this.sdk.request(
             '/v1/users/' + enc(this.sdk.userId()) + '/alarms/rules/' + enc(ruleId),
         );
@@ -95,16 +95,16 @@ export class Alarms {
      * Alarm instances. `query` is sent as query params: exact values, nested fields with dots, an
      * array matching any of its values (`{ state: 1 }`, `{ 'alarm.rule': 'r1', 'origin.id': ['d1', 'd2'] }`).
      */
-    list(query?: AlarmQuery): Promise<AlarmInstance[]> {
+    async list(query?: AlarmQuery): Promise<AlarmInstance[]> {
         return this.sdk.request<AlarmInstance[]>(this.base() + buildQuery(query));
     }
 
-    get(instanceId: string): Promise<AlarmInstance> {
+    async get(instanceId: string): Promise<AlarmInstance> {
         return this.sdk.request<AlarmInstance>(this.base() + '/' + enc(instanceId));
     }
 
     /** Counts per state / severity. */
-    stats(): Promise<any> {
+    async stats(): Promise<any> {
         return this.sdk.request(this.base() + '/stats');
     }
 
@@ -182,29 +182,29 @@ export class Alarms {
      * The server validates transitions (a CLEARED alarm cannot be reactivated). The helpers
      * below only differ in the state they set.
      */
-    update(instanceId: string, body: Record<string, unknown>): Promise<any> {
+    async update(instanceId: string, body: Record<string, unknown>): Promise<any> {
         return this.sdk.request(this.base() + '/' + enc(instanceId), {
             method: 'PUT',
             body: body || {},
         });
     }
 
-    acknowledge(instanceId: string, opts?: AlarmUpdateOptions): Promise<any> {
+    async acknowledge(instanceId: string, opts?: AlarmUpdateOptions): Promise<any> {
         return this.update(instanceId, { ...opts, state: ALARM_STATE.ACKNOWLEDGED });
     }
 
     /** Shelve (usually with a reactivation timespan). */
-    shelve(instanceId: string, opts?: AlarmUpdateOptions): Promise<any> {
+    async shelve(instanceId: string, opts?: AlarmUpdateOptions): Promise<any> {
         return this.update(instanceId, { ...opts, state: ALARM_STATE.SHELVED });
     }
 
     /** Latch (fires again after the configured timeout). */
-    latch(instanceId: string, opts?: AlarmUpdateOptions): Promise<any> {
+    async latch(instanceId: string, opts?: AlarmUpdateOptions): Promise<any> {
         return this.update(instanceId, { ...opts, state: ALARM_STATE.LATCHED });
     }
 
     /** Clear (resolve). A cleared instance cannot be reactivated. */
-    clear(instanceId: string, opts?: AlarmUpdateOptions): Promise<any> {
+    async clear(instanceId: string, opts?: AlarmUpdateOptions): Promise<any> {
         return this.update(instanceId, { ...opts, state: ALARM_STATE.CLEARED });
     }
 }

@@ -32,7 +32,7 @@ export class Storages {
     }
 
     /** Files of a storage, optionally inside `path`. */
-    list(storageId: string, path?: string): Promise<StorageFile[]> {
+    async list(storageId: string, path?: string): Promise<StorageFile[]> {
         return this.sdk.request<StorageFile[]>(
             '/v1/users/' +
                 enc(this.sdk.userId()) +
@@ -51,7 +51,7 @@ export class Storages {
     read(storageId: string, path: string, opts: { as: 'arrayBuffer' }): Promise<ArrayBuffer>;
     read(storageId: string, path: string, opts: { as: 'text' }): Promise<string>;
     read<T = any>(storageId: string, path: string, opts?: { as?: 'json' }): Promise<T>;
-    read(
+    async read(
         storageId: string,
         path: string,
         opts?: { as?: 'json' | 'text' | 'blob' | 'arrayBuffer' },
@@ -85,7 +85,7 @@ export class Storages {
      * (e.g. from `<input type="file">`), an ArrayBuffer / typed array, or any other value, stored
      * as JSON.
      */
-    write(storageId: string, path: string, data: unknown): Promise<any> {
+    async write(storageId: string, path: string, data: unknown): Promise<any> {
         let body: unknown = data;
         let type = 'application/octet-stream';
         if (typeof Blob !== 'undefined' && data instanceof Blob) {
@@ -119,7 +119,7 @@ export class Storages {
     }
 
     /** Delete a file, or a folder with everything in it. */
-    remove(storageId: string, path: string): Promise<any> {
+    async remove(storageId: string, path: string): Promise<any> {
         return this.sdk.request(this.file(storageId, path, 'v2'), { method: 'DELETE' });
     }
 

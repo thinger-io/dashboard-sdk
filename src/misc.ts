@@ -9,11 +9,11 @@ export class Products {
     /** @internal */
     constructor(private readonly sdk: ThingerClient) {}
 
-    list(query?: ListQuery): Promise<Product[]> {
+    async list(query?: ListQuery): Promise<Product[]> {
         return this.sdk.resources.list<Product>('product', query);
     }
 
-    get(productId: string): Promise<Product> {
+    async get(productId: string): Promise<Product> {
         return this.sdk.resources.get<Product>('product', productId);
     }
 
@@ -21,7 +21,7 @@ export class Products {
      * Call a resource of the product API (the functions of the product profile) with `input` as
      * its JSON body. It reaches a device only if the resource defines a `device_id_resolver`.
      */
-    call<T = any>(productId: string, resource: string, input?: unknown): Promise<T> {
+    async call<T = any>(productId: string, resource: string, input?: unknown): Promise<T> {
         return this.sdk.request<T>(
             '/v1/users/' +
                 enc(this.sdk.userId()) +
@@ -40,7 +40,7 @@ export class Endpoints {
     constructor(private readonly sdk: ThingerClient) {}
 
     /** Trigger an endpoint with an optional JSON payload. */
-    call<T = any>(endpointId: string, payload?: unknown): Promise<T> {
+    async call<T = any>(endpointId: string, payload?: unknown): Promise<T> {
         return this.sdk.request<T>(
             '/v1/users/' + enc(this.sdk.userId()) + '/endpoints/' + enc(endpointId) + '/call',
             { method: 'POST', body: payload === undefined ? {} : payload },
@@ -54,13 +54,13 @@ export class Projects {
     constructor(private readonly sdk: ThingerClient) {}
 
     /** The viewer's own projects and the ones shared with them (those carry `owner`). */
-    list(): Promise<ProjectRef[]> {
+    async list(): Promise<ProjectRef[]> {
         return this.sdk.request<ProjectRef[]>('/v1/users/' + enc(this.sdk.userId()) + '/projects', {
             project: false,
         });
     }
 
-    get(projectId: string): Promise<ProjectRef> {
+    async get(projectId: string): Promise<ProjectRef> {
         return this.sdk.request<ProjectRef>(
             '/v1/users/' + enc(this.sdk.userId()) + '/projects/' + enc(projectId),
             { project: false },
@@ -74,12 +74,12 @@ export class Stats {
     constructor(private readonly sdk: ThingerClient) {}
 
     /** Account statistics. */
-    account(): Promise<any> {
+    async account(): Promise<any> {
         return this.sdk.request('/v1/users/' + enc(this.sdk.userId()) + '/stats');
     }
 
     /** Traffic usage over the last 30 days: all devices, or one with `deviceId`. */
-    usage(deviceId?: string): Promise<any> {
+    async usage(deviceId?: string): Promise<any> {
         if (deviceId) return this.sdk.devices.stats(deviceId);
         return this.sdk.request('/v1/users/' + enc(this.sdk.userId()) + '/info/devices/stats');
     }

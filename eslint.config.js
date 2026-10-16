@@ -25,7 +25,7 @@ export default tseslint.config(
         files: ['test/**'],
         rules: {
             '@typescript-eslint/no-explicit-any': 'off',
-            '@typescript-eslint/no-non-null-assertion': 'off',
+            '@typescript-eslint/no-this-alias': 'off',
         },
     },
     prettierConfig,

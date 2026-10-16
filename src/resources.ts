@@ -65,7 +65,7 @@ export class Resources {
     }
 
     /** One resource document. */
-    get<T = any>(kind: ResourceKind, id: string): Promise<T> {
+    async get<T = any>(kind: ResourceKind, id: string): Promise<T> {
         return this.sdk.request<T>(
             '/v1/users/' + enc(this.sdk.userId()) + '/' + resourcePath(kind) + '/' + enc(id),
         );
@@ -101,12 +101,12 @@ export class Properties {
     }
 
     /** `query.id` accepts a pattern matching several properties ('temp*'). */
-    list(kind: PropertyKind, id: string, query?: PropertyQuery): Promise<Property[]> {
+    async list(kind: PropertyKind, id: string, query?: PropertyQuery): Promise<Property[]> {
         return this.sdk.request<Property[]>(this.base(kind, id) + buildQuery(query));
     }
 
     /** The full document `{ property, value, created, modified, … }`. */
-    get<T = any>(kind: PropertyKind, id: string, propertyId: string): Promise<Property<T>> {
+    async get<T = any>(kind: PropertyKind, id: string, propertyId: string): Promise<Property<T>> {
         return this.sdk.request<Property<T>>(this.base(kind, id) + '/' + enc(propertyId));
     }
 

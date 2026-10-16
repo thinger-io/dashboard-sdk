@@ -56,12 +56,12 @@ export class Devices {
      * asset_group, type, name, sort, order, labels (`{ key: value }`, or `[key]` for "has label"),
      * limit.
      */
-    list(query?: DeviceQuery): Promise<Device[]> {
+    async list(query?: DeviceQuery): Promise<Device[]> {
         return this.sdk.resources.list<Device>('device', query);
     }
 
     /** One device, with its `connection` status. */
-    get(deviceId: string): Promise<Device> {
+    async get(deviceId: string): Promise<Device> {
         return this.sdk.request<Device>(this.base(deviceId));
     }
 
@@ -70,7 +70,7 @@ export class Devices {
      * `{ type }` narrow it to an asset group / type; `{ connected: true }` returns only connected
      * devices.
      */
-    locations(opts?: LocationsQuery): Promise<any[]> {
+    async locations(opts?: LocationsQuery): Promise<any[]> {
         const o = opts || {};
         const u = '/v1/users/' + enc(this.sdk.userId());
         let path: string;
@@ -82,7 +82,7 @@ export class Devices {
     }
 
     /** Traffic usage of one device over the last 30 days. */
-    stats(deviceId: string): Promise<any> {
+    async stats(deviceId: string): Promise<any> {
         return this.sdk.request(this.base(deviceId, 'v3') + '/stats');
     }
 
@@ -92,22 +92,22 @@ export class Devices {
      * Properties of a device, inherited ones included: those carry `source` (`type`, `group` or
      * `product`). `query.id` accepts a pattern ('temp*').
      */
-    listProperties(deviceId: string, query?: PropertyQuery): Promise<Property[]> {
+    async listProperties(deviceId: string, query?: PropertyQuery): Promise<Property[]> {
         return this.sdk.properties.list('device', deviceId, query);
     }
 
     /** One property: `{ property, value, source, created, modified, … }`. */
-    getProperty<T = any>(deviceId: string, propertyId: string): Promise<Property<T>> {
+    async getProperty<T = any>(deviceId: string, propertyId: string): Promise<Property<T>> {
         return this.sdk.properties.get<T>('device', deviceId, propertyId);
     }
 
     /** Create or update a property. */
-    setProperty(deviceId: string, propertyId: string, value: unknown): Promise<any> {
+    async setProperty(deviceId: string, propertyId: string, value: unknown): Promise<any> {
         return this.sdk.properties.set('device', deviceId, propertyId, value);
     }
 
     /** Remove a property (true also when it did not exist). */
-    deleteProperty(deviceId: string, propertyId: string): Promise<boolean> {
+    async deleteProperty(deviceId: string, propertyId: string): Promise<boolean> {
         return this.sdk.properties.delete('device', deviceId, propertyId);
     }
 
@@ -117,7 +117,7 @@ export class Devices {
      * Read a device resource. `shadow: true` returns the last value saved when the device
      * disconnected.
      */
-    getResource<T = any>(
+    async getResource<T = any>(
         deviceId: string,
         resource: string,
         opts?: { shadow?: boolean },
@@ -134,7 +134,7 @@ export class Devices {
      * Call a device resource (actuation / RPC) with `input` as its JSON body: any serializable
      * value. Returns the device's response, or null when it sends none.
      */
-    callResource<T = any>(deviceId: string, resource: string, input?: unknown): Promise<T> {
+    async callResource<T = any>(deviceId: string, resource: string, input?: unknown): Promise<T> {
         return this.sdk.request<T>(this.base(deviceId, 'v3') + '/resources/' + enc(resource), {
             method: 'POST',
             body: input === undefined ? null : input,
