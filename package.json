@@ -1,7 +1,7 @@
 {
     "name": "@thinger-io/dashboard-sdk",
     "version": "0.2.0",
-    "description": "SDK for Thinger.io dashboard apps: pages and web apps (React, Angular, Vue…) that run inside the Thinger console or on their own",
+    "description": "SDK for Thinger.io dashboard apps: pages and web apps (React, Angular, Vue\u2026) that run inside the Thinger console or on their own",
     "type": "module",
     "main": "./dist/index.js",
     "module": "./dist/index.js",
@@ -26,6 +26,8 @@
     },
     "files": [
         "dist",
+        "src",
+        "templates",
         "CHANGELOG.md",
         "PROTOCOL.md",
         "LICENSE",

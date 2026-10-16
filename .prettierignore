@@ -2,6 +2,7 @@ dist
 coverage
 node_modules
 package-lock.json
-templates/*/node_modules
-templates/*/dist
+templates
 src/version.ts
+test-results
+playwright-report
