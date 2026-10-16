@@ -3,7 +3,7 @@
 Versions follow semver. While they are 0.x the contract with the console is still being fixed;
 1.0.0 freezes it. Each major version gets a migration section.
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2026-10-16
 
 The dashboard SDK becomes an npm package, rewritten in TypeScript. SDK 0.1, the script the server
 served at `/sdk/0.1/thinger-dashboard.js`, never reached production, so 0.2 keeps its API but not
