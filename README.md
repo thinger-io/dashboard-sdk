@@ -418,6 +418,18 @@ deprecated: it logs a warning asking to install the package. For its types:
 
 They also keep the type names of SDK 0.1 (`ThingerSDK.Device`, `ThingerSDK.Unsubscribe`…).
 
+Moving a script page to the package (a Vite project, ES modules):
+
+- Every module that uses `Thinger` imports it; there is no global. Import the SDK before any code
+  that reads `location.hash` at load time (a router): it removes its parameters from the fragment
+  when its module runs.
+- App scripts that shared state through globals become modules that import and export it.
+  Watch for an app global with the name of a browser global (`Cache`, `Image`, `Event`,
+  `Notification`, `Request`…): once the script that defined it is a module, the code that used it
+  silently gets the browser's, and `no-undef` does not catch it. Import it explicitly or rename it.
+- Reload with `Thinger.reload()`, and keep `base: './'` and hash routing (see
+  [Getting started](#getting-started)).
+
 ## Development
 
 ```sh
