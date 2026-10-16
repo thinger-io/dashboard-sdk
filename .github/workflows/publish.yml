@@ -87,7 +87,17 @@ jobs:
             # prepublishOnly builds dist/ with this version in the SDK and in compat.json
             - name: publish
               if: env.published == 'false'
-              run: npm publish --provenance --tag ${{ env.npm_tag_version }} --access public
+              # a version npm still holds (it takes minutes to show) answers E409 "previously staged":
+              # it is published, not a failure
+              run: |
+                  if ! npm publish --provenance --tag ${{ env.npm_tag_version }} --access public 2> publish.err; then
+                      cat publish.err
+                      if tr '\n' ' ' < publish.err | grep -q 'previously staged'; then
+                          echo "::notice::${{ env.tag_version }} is already on npm (still staged)"
+                      else
+                          exit 1
+                      fi
+                  fi
 
             - name: Get changelog body
               if: env.published == 'false'
