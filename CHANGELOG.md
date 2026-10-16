@@ -53,9 +53,18 @@ the global as before (deprecated).
 - `alarms.acknowledge` / `shelve` / `latch` / `clear` always set their own state, even when
   `opts` carries a `state`.
 - `ready()` also waits (up to 3 s) for the server version.
+- Inside a frame, `ready()` rejects with `code: 'no-session'` when no `thinger:init` arrives in
+  10 s (a page framed by a website without a token), instead of waiting forever.
+- `fetch()` / `request()` only add the token and `?project=` to the Thinger server's URLs
+  (relative paths, `apiBase`, the page's origin): an absolute URL of another server gets a plain
+  fetch, without the viewer's token.
 - Importing the package without a browser window (server-side rendering, tests) leaves the SDK
   idle instead of failing.
 
 ### Fixed
 
+- `devices.callResource` and `buckets.write` send their input as JSON whatever it is, a string
+  too, as 0.1 did.
+- Asking for a token refresh with no console to answer fails at once instead of after 8 s.
+- `navigate(null)` from untyped code is ignored instead of throwing.
 - Unsubscribing the last event subscription while its socket was reconnecting left a socket open.

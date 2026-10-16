@@ -10,13 +10,23 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ThingerClient } from '../../src/client.js';
-import { parseServerVersion } from '../../src/compat.js';
+import { compareVersions, parseServerVersion } from '../../src/compat.js';
 import { standaloneFragment } from '../../src/protocol.js';
 import { FakeWindow } from '../unit/harness.js';
 
 const SERVER = process.env['THINGER_SERVER']?.replace(/\/+$/, '');
 const TOKEN = process.env['THINGER_TOKEN'];
 const enabled = !!(SERVER && TOKEN);
+
+/**
+ * True when the server meets `version`. Tests of a function declared with
+ * @requiresServer('<name>', version) run only then: `it.runIf(() => atLeast(sdk, '7.6'))` does not
+ * work (conditions are read before beforeAll), so check inside the test and return early.
+ */
+export function atLeast(sdk: ThingerClient, version: string): boolean {
+    const server = parseServerVersion(sdk.serverVersion);
+    return !!server && compareVersions(server, parseServerVersion(version)!) >= 0;
+}
 
 function client(): ThingerClient {
     const href =

@@ -43,6 +43,15 @@ import {
 - **Who gets the token:** the console sends the access token (and answers token refreshes and
   file openings) only when the app's URL has the console's own origin, such as a file storage of
   the same server. An app on another origin gets `token: null` and the rest of the context.
+- **One token per frame document.** The sandbox does not stop a link in the app from navigating
+  the frame itself to another site, and that page would pass the `event.source` check (both have
+  an opaque origin). So the console answers with a token (in `thinger:init`, `thinger:token`) only
+  to the document it loaded: once the frame fires a second `load` (another document, not a hash
+  change), it sends no token until it loads the dashboard URL again. _Console 7.5 does not do
+  this yet: required from the next console release._
+- **Handshake timeout.** A framed app that gets no `thinger:init` within 10 s
+  (`HANDSHAKE_TIMEOUT_MS`) rejects `ready()` with `code: 'no-session'`, so a page framed by a site
+  that is not the console fails visibly. A later `thinger:init` still starts the session.
 
 ## Sequence
 
@@ -75,11 +84,11 @@ app (iframe)                                   console
 
 ## Console → app
 
-| Message         | Fields                   | Meaning                                                                                                                                                                                                 |
-| --------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `thinger:init`  | see below                | The answer to `thinger:ready`: credentials and context. The app may get it again; each one replaces the previous context.                                                                               |
-| `thinger:token` | `token?: string \| null` | The answer to `thinger:refresh-token`: the new token, or null when the refresh failed. The console may also send it unasked. The app gives up after 8 s without an answer (`TOKEN_REFRESH_TIMEOUT_MS`). |
-| `thinger:route` | `path: string`           | The console's URL changed (typed, back / forward): move the app to this hash route.                                                                                                                     |
+| Message         | Fields                   | Meaning                                                                                                                                                                                                              |
+| --------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `thinger:init`  | see below                | The answer to `thinger:ready`: credentials and context. The app may get it again; each one replaces the previous context for new calls (open WebSockets keep the credentials they opened with until they reconnect). |
+| `thinger:token` | `token?: string \| null` | The answer to `thinger:refresh-token`: the new token, or null when the refresh failed. The console may also send it unasked. The app gives up after 8 s without an answer (`TOKEN_REFRESH_TIMEOUT_MS`).              |
+| `thinger:route` | `path: string`           | The console's URL changed (typed, back / forward): move the app to this hash route.                                                                                                                                  |
 
 ### `thinger:init` fields
 

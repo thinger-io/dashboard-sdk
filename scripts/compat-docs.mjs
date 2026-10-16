@@ -1,5 +1,5 @@
 // Adds "Requires Thinger ≥ X" to the TSDoc of a method in a .d.ts, so editors show the server
-// version a declared function needs. Used by build.mjs; unit-tested in test/unit/compat-docs.test.ts.
+// version a declared function needs. Used by build.mjs; unit-tested in test/unit/compat.test.ts.
 import ts from 'typescript';
 
 const MARK = 'Requires Thinger ≥ ';

@@ -6,19 +6,32 @@
     "main": "./dist/index.js",
     "module": "./dist/index.js",
     "types": "./dist/index.d.ts",
+    "typesVersions": {
+        "*": {
+            "protocol": [
+                "dist/protocol.d.ts"
+            ],
+            "global": [
+                "dist/global.d.ts"
+            ]
+        }
+    },
     "unpkg": "./dist/thinger-dashboard.min.js",
     "jsdelivr": "./dist/thinger-dashboard.min.js",
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
-            "import": "./dist/index.js"
+            "import": "./dist/index.js",
+            "default": "./dist/index.js"
         },
         "./protocol": {
             "types": "./dist/protocol.d.ts",
-            "import": "./dist/protocol.js"
+            "import": "./dist/protocol.js",
+            "default": "./dist/protocol.js"
         },
         "./global": {
-            "types": "./dist/global.d.ts"
+            "types": "./dist/global.d.ts",
+            "default": "./dist/global.js"
         },
         "./compat.json": "./dist/compat.json",
         "./iife": "./dist/thinger-dashboard.min.js",

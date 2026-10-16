@@ -137,7 +137,9 @@ export class Devices {
     async callResource<T = any>(deviceId: string, resource: string, input?: unknown): Promise<T> {
         return this.sdk.request<T>(this.base(deviceId, 'v3') + '/resources/' + enc(resource), {
             method: 'POST',
-            body: input === undefined ? null : input,
+            // always JSON, a string too ("auto" → "\"auto\""), as the device expects
+            body: JSON.stringify(input === undefined ? null : input),
+            headers: { 'Content-Type': 'application/json' },
         });
     }
 

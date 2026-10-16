@@ -178,6 +178,9 @@ export const MAX_ERROR_LENGTH = 2000;
 /** Length of a `thinger:location` path the console accepts, at most. */
 export const MAX_LOCATION_LENGTH = 1024;
 
+/** How long a framed app waits for `thinger:init` before `ready()` rejects (ms). */
+export const HANDSHAKE_TIMEOUT_MS = 10000;
+
 /** How long the app waits for `thinger:token` after `thinger:refresh-token` (ms). */
 export const TOKEN_REFRESH_TIMEOUT_MS = 8000;
 

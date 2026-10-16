@@ -65,23 +65,37 @@ jobs:
                               break;
                           fi
                       done
-                  elif [ ${{ env.branch }} == 'main' ]; then
+                  else
                       echo "npm_tag_version=latest" >> $GITHUB_ENV
-                  elif [ `git tag --list | grep -q ${{ env.tag_version }}` -ne 0 ]; then exit 1; fi
+                  fi
+
+            # A push to main without a version bump has nothing to publish: skip the rest.
+            - name: Skip versions already on npm
+              run: |
+                  if npm view "$(jq -r .name package.json)@${{ env.tag_version }}" version >/dev/null 2>&1; then
+                      echo "::notice::${{ env.tag_version }} is already on npm: nothing to publish"
+                      echo "published=true" >> $GITHUB_ENV
+                  else
+                      echo "published=false" >> $GITHUB_ENV
+                  fi
 
             - name: update version
+              if: env.published == 'false'
               run: |
                   npm version --no-git-tag-version --allow-same-version ${{ env.tag_version }}
 
             # prepublishOnly builds dist/ with this version in the SDK and in compat.json
             - name: publish
+              if: env.published == 'false'
               run: npm publish --provenance --tag ${{ env.npm_tag_version }} --access public
 
             - name: Get changelog body
+              if: env.published == 'false'
               run: |
                   awk '/^## \[[0-9]+/,EOF' CHANGELOG.md | awk '(NR>1)' | awk '1;/^## \[[0-9]+/{exit}' | sed '$d' > release_body.md
 
             - name: Set pre-release boolean
+              if: env.published == 'false'
               run: |
                   prerelease=false
                   if [ ${{ env.branch }} == 'develop' ]; then
@@ -90,6 +104,7 @@ jobs:
                   echo "prerelease=$prerelease" >> $GITHUB_ENV
 
             - name: Create GitHub release
+              if: env.published == 'false'
               uses: ncipollo/release-action@v1
               with:
                   prerelease: ${{ env.prerelease }}

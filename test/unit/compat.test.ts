@@ -68,10 +68,16 @@ class Gadgets {
         return this.sdk.request('/v1/users/alice/gadgets');
     }
 
-    @requiresServer('gadgets.watch', '7.6.2')
+    @requiresServer('gadgets.watch', '7.6.2', 'value')
     watch(cb: () => void): () => void {
         cb();
         return () => {};
+    }
+
+    // as a bundler that compiles async away (Angular with zone.js) leaves an async method
+    @requiresServer('gadgets.compiled', '7.6')
+    compiled(): Promise<unknown> {
+        return this.sdk.request('/v1/users/alice/gadgets');
     }
 
     async base(): Promise<unknown> {
@@ -106,6 +112,16 @@ describe('declared functions', () => {
             message: 'gadgets.list requires Thinger ≥ 7.6 (this server is 7.5.3)',
         });
         expect(() => gadgets.watch(() => {})).toThrow(/requires Thinger ≥ 7.6.2/);
+        // a promise-returning method rejects, never throws, however it was compiled
+        let thrown = false;
+        let rejected: unknown;
+        try {
+            await gadgets.compiled().catch((e: unknown) => (rejected = e));
+        } catch {
+            thrown = true;
+        }
+        expect(thrown).toBe(false);
+        expect(rejected).toMatchObject({ code: 'unsupported' });
         expect(server.apiCalls).toEqual([]);
     });
 
@@ -133,6 +149,16 @@ describe('declared functions', () => {
         });
         // undeclared functions keep their 404
         await expect(gadgets.base()).rejects.toMatchObject({ code: 'http', status: 404 });
+    });
+
+    it('keep a 404 as such while the version is still loading', async () => {
+        const { sdk, server, win } = framed(undefined, { versionTimeoutMs: 10 });
+        let answer!: (r: Response) => void;
+        server.fetch.mockImplementationOnce(() => new Promise<Response>((r) => (answer = r)));
+        win.receive({ type: 'thinger:init', token: 't', user: { id: 'alice' } });
+        await sdk.ready();
+        await expect(new Gadgets(sdk).list()).rejects.toMatchObject({ code: 'http', status: 404 });
+        answer(json({ version: '7.6.0' }));
     });
 
     it('keep a 404 as such when the version is known', async () => {

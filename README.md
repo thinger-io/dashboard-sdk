@@ -110,8 +110,9 @@ https://<server>/v1/users/<u>/storages/<s>/files/#/<route>&thinger_token=<access
   reloading the page keeps working in that tab. There is no token refresh: when the token
   expires, calls fail with 401 (the SDK logs it once).
 - A page opened on its own with no token (and nothing stored in the tab) rejects `ready()` with
-  an error (`code: 'no-session'`) instead of waiting forever: show it. Nothing is posted to a
-  parent window, even inside a website's iframe.
+  an error (`code: 'no-session'`) instead of waiting forever: show it. Inside a website's iframe
+  without a token the SDK takes the website for the console: it posts `thinger:ready` (no data)
+  and rejects `ready()` the same way after 10 s without an answer.
 
 Uses:
 
@@ -177,7 +178,7 @@ Tokens:
 | `ready()`             | Promise resolved once the session is there (console handshake or standalone link) and the server version has been read (up to 3 s). Rejects with `code: 'no-session'` when there is none.                                                                                                                                             |
 | `onInit(fn)`          | Call `fn(Thinger)` on every init (and at once when already initialized).                                                                                                                                                                                                                                                              |
 | `request(path, opts)` | API call. `opts.body`: any JSON value, or a string / Blob / FormData / ArrayBuffer sent as is. `opts.as` forces the response type (`json`, `text`, `blob`, `arrayBuffer`); by default JSON for JSON responses, text otherwise, null when empty. `opts.project: false` skips the project scoping. Use it for any API not wrapped here. |
-| `fetch(path, opts)`   | Raw `fetch()` with the Bearer token and `?project=`; inside the console, retries once after a transparent token refresh on 401.                                                                                                                                                                                                       |
+| `fetch(path, opts)`   | Raw `fetch()` with the Bearer token and `?project=`; inside the console, retries once after a transparent token refresh on 401. Absolute URLs of other servers get neither: the token only goes to the Thinger server.                                                                                                                |
 | `navigate(target)`    | Navigate the console: a path, or one of `{ device }`, `{ product }`, `{ project }`, `{ dashboard }`, `{ url }`. Standalone pages go to the URL themselves.                                                                                                                                                                            |
 | `supports(name)`      | Whether a function is available on this server: `Thinger.supports('devices.list')`. See below.                                                                                                                                                                                                                                        |
 
@@ -389,6 +390,9 @@ A function that needs a server newer than 7.5 is declared where it is defined:
 ```ts
 @requiresServer('devices.something', '7.6')
 async something(): Promise<Thing> { … }
+
+@requiresServer('devices.watchSomething', '7.6', 'value') // returns synchronously: throws
+watchSomething(cb: (e: Event) => void): Unsubscribe { … }
 ```
 
 That declaration is the only place: the build adds "Requires Thinger ≥ 7.6" to its TSDoc and the

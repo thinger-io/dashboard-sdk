@@ -54,16 +54,16 @@ function compatOf(host: CompatHost): Compat | undefined {
     return host.compat ?? host.sdk?.compat;
 }
 
-function isAsync(fn: unknown): boolean {
-    return Object.prototype.toString.call(fn) === '[object AsyncFunction]';
-}
-
 /**
  * Declare that a function needs server `version` or later. `name` is its public path from the
- * SDK root ('devices.list', 'alarms.rules.get', or 'navigate' for the root). Use it on `async`
- * methods (the check rejects) or on methods that return synchronously (the check throws).
+ * SDK root ('devices.list', 'alarms.rules.get', or 'navigate' for the root).
+ *
+ * `returns` says how the function fails: 'promise' (default) rejects, for functions that return
+ * a promise; 'value' throws, for functions that return synchronously (subscriptions). It is
+ * declared, not detected, because bundlers that compile `async` away (Angular with zone.js) would
+ * hide it.
  */
-export function requiresServer(name: string, version: string) {
+export function requiresServer(name: string, version: string, returns: 'promise' | 'value' = 'promise') {
     if (!parseServerVersion(version)) throw new Error('requiresServer: invalid version ' + version);
     if (requirements.has(name)) throw new Error('requiresServer: ' + name + ' declared twice');
     requirements.set(name, version);
@@ -71,25 +71,30 @@ export function requiresServer(name: string, version: string) {
         method: (this: This, ...args: Args) => Return,
         _context: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>,
     ): (this: This, ...args: Args) => Return {
-        const asyncMethod = isAsync(method);
+        if (returns === 'value') {
+            return function (this: This, ...args: Args): Return {
+                const refused = compatOf(this as CompatHost)?.check(name);
+                if (refused) throw refused;
+                return method.apply(this, args);
+            };
+        }
         return function (this: This, ...args: Args): Return {
             const compat = compatOf(this as CompatHost);
             const refused = compat ? compat.check(name) : null;
-            if (refused) {
-                if (asyncMethod) return Promise.reject(refused) as Return;
-                throw refused;
+            if (refused) return Promise.reject(refused) as Return;
+            let result: Promise<unknown>;
+            try {
+                result = Promise.resolve(method.apply(this, args));
+            } catch (e) {
+                return Promise.reject(e) as Return;
             }
-            const result = method.apply(this, args);
-            // version unknown: a 404 from this function means the server does not have it
-            if (compat && compat.serverVersion === null && result instanceof Promise) {
-                return result.catch((err: unknown) => {
-                    if ((err as { status?: unknown } | null)?.status === 404) {
-                        throw unsupportedError(name, version, null, err);
-                    }
-                    throw err;
-                }) as Return;
-            }
-            return result;
+            return result.catch((err: unknown) => {
+                // the version could not be read: a 404 from this function means the server lacks it
+                if (compat?.unreadable && (err as { status?: unknown } | null)?.status === 404) {
+                    throw unsupportedError(name, version, null, err);
+                }
+                throw err;
+            }) as Return;
         };
     };
 }
@@ -114,10 +119,16 @@ export class Compat {
     private raw: string | null = null;
     private parsed: Version | null = null;
     private loading: Promise<void> | null = null;
+    private failed = false;
 
     /** Server version as reported, or null while unknown or unreadable. */
     get serverVersion(): string | null {
         return this.parsed ? this.raw : null;
+    }
+
+    /** True once reading the version finished without one (not while it is still loading). */
+    get unreadable(): boolean {
+        return this.failed;
     }
 
     /**
@@ -128,7 +139,7 @@ export class Compat {
         if (!this.loading) {
             this.loading = read().then(
                 (value) => this.set(value, warn),
-                () => undefined,
+                () => this.set(null),
             );
         }
         return this.loading;
@@ -139,6 +150,7 @@ export class Compat {
         const parsed = parseServerVersion(value);
         this.raw = parsed ? String(value) : null;
         this.parsed = parsed;
+        this.failed = !parsed;
         const base = parseServerVersion(BASE_SERVER_VERSION)!;
         if (parsed && warn && compareVersions(parsed, base) < 0) {
             warn(

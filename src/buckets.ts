@@ -517,7 +517,9 @@ export class Buckets {
             '/v1/users/' + enc(this.sdk.userId()) + '/buckets/' + enc(bucketId) + '/data',
             {
                 method: 'POST',
-                body: value === undefined ? null : value,
+                // always JSON, a string too
+                body: JSON.stringify(value === undefined ? null : value),
+                headers: { 'Content-Type': 'application/json' },
             },
         );
     }

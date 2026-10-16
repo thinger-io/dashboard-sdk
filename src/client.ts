@@ -7,6 +7,7 @@ import { Events } from './events.js';
 import { bodyOf, enc, jwtPayload, responseError, safeJson } from './http.js';
 import { Endpoints, Products, Projects, Stats } from './misc.js';
 import {
+    HANDSHAKE_TIMEOUT_MS,
     MAX_ERROR_LENGTH,
     MAX_ERROR_MESSAGES,
     MESSAGE,
@@ -34,6 +35,8 @@ export interface ClientOptions {
     WebSocket?: typeof WebSocket;
     /** Wait at most this long for the server version before `ready()` resolves (ms, default 3000). */
     versionTimeoutMs?: number;
+    /** Inside a frame, reject `ready()` when no `thinger:init` arrives in this time (ms, default 10000). */
+    handshakeTimeoutMs?: number;
 }
 
 /** @internal Resolved environment. */
@@ -90,6 +93,7 @@ export class ThingerClient {
     private resolveReady!: (sdk: ThingerClient) => void;
     private rejectReady!: (err: Error) => void;
     private initialized = false;
+    private initReceived = false;
     private readonly listeners: Array<(sdk: ThingerClient) => void> = [];
     private refresh: { promise: Promise<boolean>; resolve: (ok: boolean) => void } | null = null;
     private embedReadySent = false;
@@ -144,6 +148,19 @@ export class ThingerClient {
             this.post({ type: MESSAGE.READY, sdk: SDK_VERSION });
             this.reportLocation(win);
             this.forwardErrors(win);
+            // framed by a page that is not the console (a website without thinger_token): say so
+            // instead of waiting forever; a late init still starts the session
+            setTimeout(() => {
+                if (this.initReceived) return;
+                const err = new ThingerError(
+                    'No Thinger session: no answer from the console in ' +
+                        (options.handshakeTimeoutMs ?? HANDSHAKE_TIMEOUT_MS) / 1000 +
+                        ' s. Outside the console, open this page with a link that carries thinger_token',
+                    { code: 'no-session' },
+                );
+                console.error(err.message);
+                this.rejectReady(err);
+            }, options.handshakeTimeoutMs ?? HANDSHAKE_TIMEOUT_MS);
         } else {
             // opened on its own without a token: no console will ever answer, so fail now
             const err = new ThingerError(
@@ -282,11 +299,14 @@ export class ThingerClient {
     /**
      * Authenticated `fetch()`: adds `Authorization: Bearer <token>` and, in a project, `?project=`
      * (the server maps the URL's user to the project owner, so callers never need to know it).
-     * Inside the console, a 401 asks it for a new token and retries once.
+     * Inside the console, a 401 asks it for a new token and retries once. An absolute URL of
+     * another server goes out as a plain fetch: the token only travels to the Thinger server.
      */
     async fetch(path: string, options?: FetchOptions): Promise<Response> {
         const { project: scope, ...init } = options || {};
-        let url = /^https?:\/\//.test(path) ? path : this.state.apiBase + path;
+        const absolute = /^https?:\/\//.test(path);
+        if (absolute && !this.isServerUrl(path)) return this.env.fetch(path, init);
+        let url = absolute ? path : this.state.apiBase + path;
         const project = this.state.project && this.state.project.id;
         if (scope !== false && project && !/[?&]project=/.test(url)) {
             url += (url.indexOf('?') >= 0 ? '&' : '?') + 'project=' + enc(project);
@@ -309,11 +329,12 @@ export class ThingerClient {
      * `{ dashboard }`, `{ url }`. Standalone pages go to the URL themselves.
      */
     navigate(target: NavigateTarget): void {
+        if (!target) return;
         if (!this.framed()) {
             const url =
                 typeof target === 'string'
                     ? target
-                    : 'url' in target && typeof target.url === 'string'
+                    : typeof target === 'object' && 'url' in target && typeof target.url === 'string'
                       ? target.url
                       : null;
             if (url) this.env.window?.location.assign(url);
@@ -337,15 +358,29 @@ export class ThingerClient {
         return !this.standalone && !!win && win.parent !== win;
     }
 
-    /** @internal Post a message to the console. */
-    post(message: AppMessage): void {
+    /** @internal Post a message to the console; false when there is none to post to. */
+    post(message: AppMessage): boolean {
         const win = this.env.window;
-        if (!win || win.parent === win) return;
+        if (!win || win.parent === win) return false;
         try {
             win.parent.postMessage(message, '*');
+            return true;
         } catch {
-            // parent gone
+            return false; // parent gone
         }
+    }
+
+    /** Does an absolute URL point at the Thinger server (apiBase, or this page's origin)? */
+    private isServerUrl(url: string): boolean {
+        let origin: string;
+        try {
+            origin = new URL(url).origin;
+        } catch {
+            return false;
+        }
+        const base = this.state.apiBase;
+        if (/^https?:\/\//.test(base) && new URL(base).origin === origin) return true;
+        return this.env.window?.location.origin === origin;
     }
 
     /**
@@ -398,6 +433,7 @@ export class ThingerClient {
     }
 
     private init(msg: InitMessage): void {
+        this.initReceived = true;
         this.state = {
             apiBase: typeof msg.apiBase === 'string' ? msg.apiBase : '',
             apiHost: typeof msg.apiHost === 'string' ? msg.apiHost : '',
@@ -459,7 +495,7 @@ export class ThingerClient {
             resolve(ok);
         };
         this.refresh = { promise, resolve: done };
-        this.post({ type: MESSAGE.REFRESH_TOKEN });
+        if (!this.post({ type: MESSAGE.REFRESH_TOKEN })) done(false);
         return promise;
     }
 

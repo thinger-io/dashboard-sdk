@@ -256,3 +256,54 @@ describe('API paths', () => {
         expect(body).toEqual({ annotation: 'seen', state: sdk.alarms.STATE.ACKNOWLEDGED });
     });
 });
+
+describe('review fixes', () => {
+    it('sends device resource inputs and bucket writes as JSON, strings too', async () => {
+        const { sdk, server, init } = framed();
+        server.on('POST', '/v3/users/alice/devices/d1/resources/mode', { status: 200 });
+        server.on('POST', '/v1/users/alice/buckets/b/data', { status: 200 });
+        await init();
+        await sdk.devices.callResource('d1', 'mode', 'auto');
+        await sdk.devices.callResource('d1', 'mode');
+        await sdk.buckets.write('b', 'text');
+        expect(server.apiCalls.map((c) => c.body)).toEqual(['auto', null, 'text']);
+        expect(server.apiCalls.every((c) => c.headers['Content-Type'] === 'application/json')).toBe(true);
+    });
+
+    it('sends the token only to the Thinger server', async () => {
+        const { sdk, server, init } = framed();
+        server.on('GET', /^\/data/, json({}));
+        await init({ apiBase: 'https://api.example', project: { id: 'p1' } });
+        await sdk.fetch('https://elsewhere.example/data');
+        await sdk.fetch('https://api.example/data');
+        await sdk.fetch('https://console.example/data');
+        const [third, api, page] = server.apiCalls;
+        expect(third!.url).toBe('https://elsewhere.example/data');
+        expect(third!.headers['Authorization']).toBeUndefined();
+        expect(api!.headers['Authorization']).toBe('Bearer ' + token('alice'));
+        expect(api!.url).toBe('https://api.example/data?project=p1');
+        expect(page!.headers['Authorization']).toBe('Bearer ' + token('alice'));
+    });
+
+    it('rejects ready() when framed by a page that never answers', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const { sdk, win } = framed(undefined, { handshakeTimeoutMs: 20 });
+        await expect(sdk.ready()).rejects.toMatchObject({ code: 'no-session' });
+        expect(error).toHaveBeenCalledWith(expect.stringContaining('no answer from the console'));
+        // a late init still starts the session
+        const late = vi.fn();
+        sdk.onInit(late);
+        win.receive({ type: 'thinger:init', token: token('alice'), user: { id: 'alice' } });
+        await flush();
+        expect(late).toHaveBeenCalled();
+        expect(sdk.user).toEqual({ id: 'alice' });
+    });
+
+    it('ignores navigate(null) from untyped code', async () => {
+        const { sdk, parent, init } = framed();
+        await init();
+        expect(() => sdk.navigate(null as never)).not.toThrow();
+        expect(parent.of('thinger:navigate')).toEqual([]);
+    });
+});
+
