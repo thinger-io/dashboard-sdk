@@ -31,13 +31,15 @@ describe('server versions', () => {
         expect(compareVersions([7, 4, 99], [7, 5, 0])).toBeLessThan(0);
     });
 
-    it('declares 7.5 as the base', () => {
-        expect(BASE_SERVER_VERSION).toBe('7.5');
+    it('declares 7.4 as the base', () => {
+        expect(BASE_SERVER_VERSION).toBe('7.4');
     });
 
     it('warns below the base version only', () => {
         for (const [version, warns] of [
-            ['7.4.9', true],
+            ['7.3.9', true],
+            ['7.4.0', false],
+            ['7.4.9', false],
             ['7.3.4-144-g9b2ac16f-develop', true],
             ['7.5.0', false],
             ['8.0.0', false],

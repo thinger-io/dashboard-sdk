@@ -3,7 +3,7 @@
 # Docker, registers its first user (an admin) and prints THINGER_SERVER and THINGER_TOKEN for the
 # integration tests:
 #
-#     eval "$(scripts/ci-server.sh thinger/server:7.5)"
+#     eval "$(scripts/ci-server.sh thinger/server:7.4)"
 #     npm run test:integration
 #     scripts/ci-server.sh --stop
 set -euo pipefail

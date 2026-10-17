@@ -3,6 +3,13 @@
 Versions follow semver. While they are 0.x the contract with the console is still being fixed;
 1.0.0 freezes it. Each major version gets a migration section.
 
+## [0.3.1] - 2026-10-17
+
+### Changed
+
+- The SDK's base server version is Thinger 7.4, the release that ships it (it was 7.5):
+  `BASE_SERVER_VERSION`, the start-up warning, `compat.json` (`baseServer`) and the README.
+
 ## [0.3.0] - 2026-10-16
 
 The console only hands the token to the page it loaded: a page the app's frame navigates to (a

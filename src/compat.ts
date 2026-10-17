@@ -11,7 +11,7 @@ import { ThingerError } from './errors.js';
  */
 
 /** Oldest server the SDK supports: everything without a declaration works there. */
-export const BASE_SERVER_VERSION = '7.5';
+export const BASE_SERVER_VERSION = '7.4';
 
 type Version = [number, number, number];
 

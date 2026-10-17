@@ -1,6 +1,6 @@
 name: integration
 
-# The SDK against real servers: the base version (Thinger 7.5) and the latest develop build, each
+# The SDK against real servers: the base version (Thinger 7.4) and the latest develop build, each
 # a throwaway container with MongoDB (scripts/ci-server.sh). A function declared with
 # @requiresServer is only expected to work on servers that meet its minimum.
 on:
@@ -18,7 +18,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                tag: ['7.5', 'develop']
+                tag: ['7.4', 'develop']
         steps:
             - uses: actions/checkout@v5
 
@@ -27,7 +27,7 @@ jobs:
                   node-version: 24
                   cache: npm
 
-            # thinger/server:7.5 is published when 7.5 is tagged: until then this job says so
+            # thinger/server:7.4 is published when 7.4 is tagged: until then this job says so
             # and passes
             - name: image available
               id: image

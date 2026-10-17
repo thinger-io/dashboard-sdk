@@ -21,7 +21,7 @@ Thinger.buckets.subscribe('my_bucket', { device: true, from: '6h', items: 500 },
 ```
 
 - Written in TypeScript; the package ships ESM with its type declarations.
-- Thinger 7.5 or later. See [Server versions](#server-versions).
+- Thinger 7.4 or later. See [Server versions](#server-versions).
 - The contract with the console: [PROTOCOL.md](PROTOCOL.md). Changes and migrations:
   [CHANGELOG.md](CHANGELOG.md).
 - Versions are 0.x until the contract is frozen at 1.0.
@@ -234,7 +234,7 @@ browser automation can read the DOM, run scripts, take screenshots and read the 
 
 ## Server versions
 
-The SDK supports Thinger 7.5 and later. A function that needs a newer server declares its minimum
+The SDK supports Thinger 7.4 and later. A function that needs a newer server declares its minimum
 version in the SDK; its documentation says "Requires Thinger ≥ X", and on an older server it fails
 before calling, with `err.code === 'unsupported'` and `err.requires` (e.g. `"7.6"`). Functions
 without a note work on every supported server.
@@ -246,10 +246,10 @@ without a note work on every supported server.
   what the server lacks. Unknown names answer false (and log a warning).
 - When the version cannot be read, functions run, and a 404 from a function that declares a
   minimum becomes the same `unsupported` error.
-- A server older than 7.5 is reported once, as a console warning, when the app starts.
+- A server older than 7.4 is reported once, as a console warning, when the app starts.
 - The package ships the declarations as `@thinger-io/dashboard-sdk/compat.json`
   (`{ sdk, baseServer, functions: { name: minimumVersion } }`), which the CLI reads to warn about
-  functions a server does not support. In this version every function works on 7.5:
+  functions a server does not support. In this version every function works on 7.4:
   `functions` is empty.
 
 ## Errors
@@ -447,7 +447,7 @@ npm run test:integration
 scripts/ci-server.sh --stop
 ```
 
-A function that needs a server newer than 7.5 is declared where it is defined:
+A function that needs a server newer than 7.4 is declared where it is defined:
 
 ```ts
 @requiresServer('devices.something', '7.6')
